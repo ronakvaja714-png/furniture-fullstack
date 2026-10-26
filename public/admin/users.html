@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Users - Admin</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .admin-layout { display: flex; min-height: 100vh; }
+    .admin-sidebar { width: 240px; background: #1a1a1a; color: #ccc; padding: 25px 0; flex-shrink: 0; }
+    .admin-sidebar h2 { color: white; padding: 0 20px 25px; font-size: 1.3rem; }
+    .admin-sidebar h2 span { color: #c9a86c; }
+    .admin-sidebar a { display: block; padding: 12px 20px; color: #ccc; text-decoration: none; }
+    .admin-sidebar a:hover, .admin-sidebar a.active { background: #333; color: #c9a86c; }
+    .admin-main { flex: 1; padding: 30px; background: #f8f5f0; }
+    .admin-table { width: 100%; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+    .admin-table th, .admin-table td { padding: 14px 16px; text-align: left; border-bottom: 1px solid #eee; }
+    .admin-table th { background: #2c3e50; color: white; }
+    .role-badge { padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
+    .role-admin { background: #c9a86c; color: #1a1a1a; }
+    .role-user { background: #e8e0d5; color: #333; }
+    @media (max-width: 768px) { .admin-layout { flex-direction: column; } .admin-sidebar { width: 100%; } }
+  </style>
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar">
+      <h2>Furni<span>Haven</span> Admin</h2>
+      <a href="/admin/">Dashboard</a>
+      <a href="/admin/orders.html">Orders & Map</a>
+      <a href="/admin/users.html" class="active">Users</a>
+      <a href="/" target="_blank">View Store</a>
+      <a href="#" id="admin-logout">Logout</a>
+    </aside>
+    <main class="admin-main">
+      <h1 style="margin-bottom:25px;color:#2c3e50;">Registered Users</h1>
+      <p style="color:#666;margin-bottom:20px;">All users who registered on the website. Their profiles and orders are linked.</p>
+      <div id="users-table">Loading...</div>
+    </main>
+  </div>
+  <script>
+    const token = localStorage.getItem('fh_token');
+    const user = JSON.parse(localStorage.getItem('fh_user') || '{}');
+    if (!token || user.role !== 'admin') window.location.href = '/login.html';
+
+    async function load() {
+      const res = await fetch('/api/admin/users', { headers: { Authorization: 'Bearer ' + token } });
+      const json = await res.json();
+      if (!json.success) {
+        document.getElementById('users-table').innerHTML = '<p>Failed to load</p>';
+        return;
+      }
+      const users = json.data;
+      document.getElementById('users-table').innerHTML = `
+        <table class="admin-table">
+          <thead>
+            <tr><th>ID</th><th>Name</th><th>Email</th><th>Phone</th><th>City</th><th>Role</th><th>Joined</th></tr>
+          </thead>
+          <tbody>
+            ${users.map(u => `
+              <tr>
+                <td>${u.id}</td>
+                <td>${u.name}</td>
+                <td>${u.email}</td>
+                <td>${u.phone || '-'}</td>
+                <td>${u.city || '-'}</td>
+                <td><span class="role-badge role-${u.role}">${u.role}</span></td>
+                <td>${u.created_at}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    document.getElementById('admin-logout').addEventListener('click', (e) => {
+      e.preventDefault();
+      localStorage.removeItem('fh_token');
+      localStorage.removeItem('fh_user');
+      window.location.href = '/login.html';
+    });
+
+    load();
+  </script>
+</body>
+</html>

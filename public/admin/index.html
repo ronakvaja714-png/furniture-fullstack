@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - FurniHaven</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <style>
+    .admin-layout { display: flex; min-height: 100vh; }
+    .admin-sidebar { width: 240px; background: #1a1a1a; color: #ccc; padding: 25px 0; flex-shrink: 0; }
+    .admin-sidebar h2 { color: white; padding: 0 20px 25px; font-size: 1.3rem; }
+    .admin-sidebar h2 span { color: #c9a86c; }
+    .admin-sidebar a { display: block; padding: 12px 20px; color: #ccc; text-decoration: none; }
+    .admin-sidebar a:hover, .admin-sidebar a.active { background: #333; color: #c9a86c; }
+    .admin-main { flex: 1; padding: 30px; background: #f8f5f0; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-bottom: 30px; }
+    .stat-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+    .stat-card h3 { font-size: 2rem; color: #8b5a2b; margin-bottom: 5px; }
+    .stat-card p { color: #666; }
+    .admin-table { width: 100%; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+    .admin-table th, .admin-table td { padding: 14px 16px; text-align: left; border-bottom: 1px solid #eee; }
+    .admin-table th { background: #2c3e50; color: white; }
+    @media (max-width: 768px) { .admin-layout { flex-direction: column; } .admin-sidebar { width: 100%; } }
+  </style>
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar">
+      <h2>Furni<span>Haven</span> Admin</h2>
+      <a href="/admin/" class="active">Dashboard</a>
+      <a href="/admin/orders.html">Orders & Map</a>
+      <a href="/admin/users.html">Users</a>
+      <a href="/" target="_blank">View Store</a>
+      <a href="#" id="admin-logout">Logout</a>
+    </aside>
+    <main class="admin-main">
+      <h1 style="margin-bottom:25px;color:#2c3e50;">Dashboard</h1>
+      <div class="stats-grid" id="stats">
+        <div class="stat-card"><h3>-</h3><p>Loading...</p></div>
+      </div>
+      <h2 style="margin-bottom:15px;color:#2c3e50;">Recent Orders</h2>
+      <div id="recent-orders">Loading...</div>
+    </main>
+  </div>
+  <script>
+    const token = localStorage.getItem('fh_token');
+    const user = JSON.parse(localStorage.getItem('fh_user') || '{}');
+    if (!token || user.role !== 'admin') { window.location.href = '/login.html'; }
+
+    async function load() {
+      const headers = { Authorization: 'Bearer ' + token };
+      const [statsRes, ordersRes] = await Promise.all([
+        fetch('/api/admin/stats', { headers }),
+        fetch('/api/admin/orders', { headers })
+      ]);
+      const stats = await statsRes.json();
+      const orders = await ordersRes.json();
+
+      if (stats.success) {
+        const s = stats.data;
+        document.getElementById('stats').innerHTML = `
+          <div class="stat-card"><h3>${s.orders}</h3><p>Total Orders</p></div>
+          <div class="stat-card"><h3>₹${Number(s.revenue).toLocaleString('en-IN')}</h3><p>Revenue</p></div>
+          <div class="stat-card"><h3>${s.users}</h3><p>Users</p></div>
+          <div class="stat-card"><h3>${s.products}</h3><p>Products</p></div>
+          <div class="stat-card"><h3>${s.pending}</h3><p>Pending Orders</p></div>
+        `;
+      }
+      if (orders.success) {
+        const list = orders.data.slice(0, 8);
+        if (!list.length) {
+          document.getElementById('recent-orders').innerHTML = '<p>No orders yet.</p>';
+        } else {
+          document.getElementById('recent-orders').innerHTML = `
+            <table class="admin-table">
+              <thead><tr><th>ID</th><th>Customer</th><th>City</th><th>Total</th><th>Status</th><th>Date</th></tr></thead>
+              <tbody>
+                ${list.map(o => `<tr>
+                  <td><a href="/admin/orders.html?id=${o.id}">#${o.id}</a></td>
+                  <td>${o.customer_name}</td>
+                  <td>${o.city || '-'}</td>
+                  <td>₹${Number(o.total_amount).toLocaleString('en-IN')}</td>
+                  <td>${o.status}</td>
+                  <td>${o.created_at}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          `;
+        }
+      }
+    }
+
+    document.getElementById('admin-logout').addEventListener('click', (e) => {
+      e.preventDefault();
+      localStorage.removeItem('fh_token');
+      localStorage.removeItem('fh_user');
+      window.location.href = '/login.html';
+    });
+
+    load();
+  </script>
+</body>
+</html>

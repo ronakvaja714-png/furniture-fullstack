@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orders & Map - Admin</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    .admin-layout { display: flex; min-height: 100vh; }
+    .admin-sidebar { width: 240px; background: #1a1a1a; color: #ccc; padding: 25px 0; flex-shrink: 0; }
+    .admin-sidebar h2 { color: white; padding: 0 20px 25px; font-size: 1.3rem; }
+    .admin-sidebar h2 span { color: #c9a86c; }
+    .admin-sidebar a { display: block; padding: 12px 20px; color: #ccc; text-decoration: none; }
+    .admin-sidebar a:hover, .admin-sidebar a.active { background: #333; color: #c9a86c; }
+    .admin-main { flex: 1; padding: 30px; background: #f8f5f0; }
+    .orders-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+    @media (max-width: 992px) { .orders-layout { grid-template-columns: 1fr; } .admin-layout { flex-direction: column; } .admin-sidebar { width: 100%; } }
+    #map { height: 450px; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+    .admin-table { width: 100%; background: white; border-radius: 12px; overflow: hidden; font-size: 0.9rem; }
+    .admin-table th, .admin-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; }
+    .admin-table th { background: #2c3e50; color: white; }
+    .admin-table tr { cursor: pointer; }
+    .admin-table tr:hover { background: #f8f5f0; }
+    .admin-table tr.selected { background: #e8f0fe; }
+    .detail-box { background: white; padding: 20px; border-radius: 12px; margin-top: 20px; display: none; }
+    select.status-select { padding: 4px 8px; border-radius: 6px; border: 1px solid #ddd; }
+  </style>
+</head>
+<body>
+  <div class="admin-layout">
+    <aside class="admin-sidebar">
+      <h2>Furni<span>Haven</span> Admin</h2>
+      <a href="/admin/">Dashboard</a>
+      <a href="/admin/orders.html" class="active">Orders & Map</a>
+      <a href="/admin/users.html">Users</a>
+      <a href="/" target="_blank">View Store</a>
+      <a href="#" id="admin-logout">Logout</a>
+    </aside>
+    <main class="admin-main">
+      <h1 style="margin-bottom:20px;color:#2c3e50;">Orders & Delivery Map</h1>
+      <p style="color:#666;margin-bottom:20px;">Click an order to see location on map. Markers show approximate city location of each order.</p>
+      <div class="orders-layout">
+        <div>
+          <div id="orders-table">Loading...</div>
+          <div class="detail-box" id="detail-box"></div>
+        </div>
+        <div>
+          <div id="map"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const token = localStorage.getItem('fh_token');
+    const user = JSON.parse(localStorage.getItem('fh_user') || '{}');
+    if (!token || user.role !== 'admin') window.location.href = '/login.html';
+
+    let map, markers = [];
+    const headers = { Authorization: 'Bearer ' + token };
+
+    map = L.map('map').setView([22.5, 75], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    async function loadOrders() {
+      const res = await fetch('/api/admin/orders', { headers });
+      const json = await res.json();
+      if (!json.success) return;
+
+      const orders = json.data;
+      // Clear old markers
+      markers.forEach(m => map.removeLayer(m));
+      markers = [];
+
+      if (!orders.length) {
+        document.getElementById('orders-table').innerHTML = '<p>No orders yet.</p>';
+        return;
+      }
+
+      document.getElementById('orders-table').innerHTML = `
+        <table class="admin-table">
+          <thead><tr><th>ID</th><th>Customer</th><th>City</th><th>Total</th><th>Status</th></tr></thead>
+          <tbody>
+            ${orders.map(o => `
+              <tr data-id="${o.id}" onclick="selectOrder(${o.id})">
+                <td>#${o.id}</td>
+                <td>${o.customer_name}</td>
+                <td>${o.city || '-'}</td>
+                <td>₹${Number(o.total_amount).toLocaleString('en-IN')}</td>
+                <td>${o.status}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+
+      // Add markers for all orders that have lat/lng
+      orders.forEach(o => {
+        if (o.lat && o.lng) {
+          const m = L.marker([o.lat, o.lng]).addTo(map)
+            .bindPopup(`<b>Order #${o.id}</b><br>${o.customer_name}<br>${o.city || ''}<br>₹${Number(o.total_amount).toLocaleString('en-IN')}<br>Status: ${o.status}`);
+          markers.push(m);
+        }
+      });
+    }
+
+    window.selectOrder = async function(id) {
+      document.querySelectorAll('.admin-table tr').forEach(r => r.classList.remove('selected'));
+      const row = document.querySelector(`tr[data-id="${id}"]`);
+      if (row) row.classList.add('selected');
+
+      const res = await fetch('/api/admin/orders/' + id, { headers });
+      const json = await res.json();
+      if (!json.success) return;
+      const o = json.data;
+
+      if (o.lat && o.lng) {
+        map.setView([o.lat, o.lng], 11);
+      }
+
+      const itemsHtml = (o.items || []).map(i =>
+        `<li>${i.product_name} × ${i.quantity} — ₹${Number(i.price * i.quantity).toLocaleString('en-IN')}</li>`
+      ).join('');
+
+      document.getElementById('detail-box').style.display = 'block';
+      document.getElementById('detail-box').innerHTML = `
+        <h3>Order #${o.id}</h3>
+        <p><strong>${o.customer_name}</strong> · ${o.customer_email}<br>
+        ${o.customer_phone || ''}<br>
+        ${o.address || ''} ${o.city || ''} ${o.pincode || ''}</p>
+        <p>Total: <strong>₹${Number(o.total_amount).toLocaleString('en-IN')}</strong></p>
+        <ul>${itemsHtml}</ul>
+        <p>Status:
+          <select class="status-select" onchange="updateStatus(${o.id}, this.value)">
+            <option value="pending" ${o.status==='pending'?'selected':''}>Pending</option>
+            <option value="confirmed" ${o.status==='confirmed'?'selected':''}>Confirmed</option>
+            <option value="shipped" ${o.status==='shipped'?'selected':''}>Shipped</option>
+            <option value="delivered" ${o.status==='delivered'?'selected':''}>Delivered</option>
+          </select>
+        </p>
+      `;
+    };
+
+    window.updateStatus = async function(id, status) {
+      await fetch('/api/admin/orders/' + id, {
+        method: 'PUT',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      });
+      loadOrders();
+    };
+
+    document.getElementById('admin-logout').addEventListener('click', (e) => {
+      e.preventDefault();
+      localStorage.removeItem('fh_token');
+      localStorage.removeItem('fh_user');
+      window.location.href = '/login.html';
+    });
+
+    // Open specific order from URL
+    const params = new URLSearchParams(location.search);
+    loadOrders().then(() => {
+      if (params.get('id')) selectOrder(params.get('id'));
+    });
+  </script>
+</body>
+</html>

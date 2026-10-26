@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shopping Cart - FurniHaven</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-top">Free Shipping on Orders Above ₹15,000 | Call us: +91 98765 43210</div>
+    <div class="container header-main">
+      <a href="index.html" class="logo">Furni<span>Haven</span></a>
+      <nav class="nav">
+        <a href="index.html">Home</a>
+        <a href="shop.html">Shop</a>
+        <a href="living-room.html">Living</a>
+        <a href="bedroom.html">Bedroom</a>
+        <a href="dining.html">Dining</a>
+        <a href="office.html">Office</a>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+        <a href="faq.html">FAQ</a>
+      </nav>
+      <div class="header-actions">
+        <a href="cart.html" class="cart-btn">🛒 <span class="cart-count">0</span></a>
+        <button class="menu-toggle">☰</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="page-hero">
+    <div class="container">
+      <h1>Your Cart</h1>
+      <p>Review your selected furniture before checkout</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div id="cart-content">
+        <!-- Cart rendered by JS -->
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <h3>Furni<span>Haven</span></h3>
+          <p>Premium furniture crafted with care.</p>
+          <div class="social-links"><a href="#">f</a><a href="#">in</a><a href="#">ig</a><a href="#">yt</a></div>
+        </div>
+        <div>
+          <h4>Quick Links</h4>
+          <ul class="footer-links">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="shop.html">Shop</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="contact.html">Contact</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Categories</h4>
+          <ul class="footer-links">
+            <li><a href="living-room.html">Living Room</a></li>
+            <li><a href="bedroom.html">Bedroom</a></li>
+            <li><a href="dining.html">Dining</a></li>
+            <li><a href="office.html">Office</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Newsletter</h4>
+          <form class="newsletter-form" onsubmit="event.preventDefault(); showToast('Subscribed!');">
+            <input type="email" placeholder="Your email" required>
+            <button type="submit">Join</button>
+          </form>
+        </div>
+      </div>
+      <div class="footer-bottom"><p>&copy; 2026 FurniHaven. All rights reserved.</p></div>
+    </div>
+  </footer>
+  <script src="js/main.js"></script>
+</body>
+</html>

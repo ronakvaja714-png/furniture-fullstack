@@ -1,0 +1,21 @@
+# Database
+database/
+*.db
+*.db-journal
+
+# Dependencies
+node_modules/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Env
+.env
+.env.local
